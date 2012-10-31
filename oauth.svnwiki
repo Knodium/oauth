@@ -1,0 +1,261 @@
+[[tags: egg]]
+
+== OAuth
+
+[[toc:]]
+
+=== Description
+
+OAuth 1.0, 1.0a & RFC 5849
+
+* http://oauth.net/core/1.0/
+* http://oauth.net/core/1.0a/
+* http://tools.ietf.org/html/rfc5849
+
+=== Author
+
+[[/users/andyjpb|Andy Bennett]]
+
+=== Requirements
+
+* [[data-structures]] [[extras]] [[srfi-1]] [[srfi-13]]
+* [[uri-common]] [[intarweb]] [[http-client]]
+
+=== API
+
+==== oauth-client
+
+===== empty-credential
+===== make-oauth-credential
+
+<procedure>(make-oauth-credential identifier secret)</procedure>
+
+Returns a credential
+
+	Credentials are a pair of a unique identifier and a matching
+	shared secret.  OAuth defines three classes of credentials:
+	client, temporary, and token, used to identify and authenticate
+	the client making the request, the authorization request, and
+	the access grant, respectively.
+	  -- RFC 5849
+
+You will need to turn your app token and app secret into a credential.
+
+If you store token credentials persistently then you can recombine the
+identifier and secret with this procedure.
+
+
+===== token
+
+<procedure>(token credential)</procedure>
+
+Extracts the identifier part of the credential and returns it.
+
+You will need this procedure in order to store credentials.
+
+
+===== secret
+
+<procedure>(secret credential)</procedure>
+
+Extracts the secret part of the credential and returns it.
+
+You will need this procedure in order to store credentials.
+
+
+===== make-oauth-service-provider
+
+<procedure>(make-oauth-service-provider #!key protocol-version signature-method owner-auth-url credential-request-url (credential-request-method 'POST) token-request-url (token-request-method 'POST) (transmission-method 'authorization-header))</procedure>
+
+Defines an OAuth service provider.
+
+Specifies:
+* Which version of the protocol and how we want to speak to them.
+* The 3 URIs for Redirection-Based Authorization (RFC5849, Section 2.
+
+The service provider definition returned from this procedure must be combined
+with a client credential before it can be used as part of a request.
+
+
+===== make-oauth-service
+
+<procedure>(make-oauth-service #!key service client-credential)</procedure>
+
+Combines an OAuth service provider definition (from
+{{make-oauth-service-provider}}) with a client credential to produce something
+that can be used for API requests.
+
+
+===== oauth-service
+
+<parameter>oauth-service</parameter>
+
+Used to store the service passed to {{with-oauth}}.
+
+
+===== oauth-protocol-parameters
+
+<parameter>oauth-protocol-parameters</parameter>
+
+Used to store the protocol-parameters to pass to requests made within a
+{{with-oauth}} scope.
+
+
+===== oauth-token-credential
+
+<parameter>oauth-token-credential</parameter>
+
+Used to store the token-credential passed to {{with-oauth}}.
+
+
+===== with-oauth
+
+<procedure>(with-oauth service token-credential thunk)</procedure>
+
+Execute {{thunk}} in an environment where {{call-with-input-request}} is bound
+to a procedure that will sign the request with the supplied OAuth credentials
+but otherwise behave similarly to {{call-with-input-request}} from {{http-client}}.
+
+This is the procedure that you probably want to use to wrap API calls.
+
+
+===== authenticated-call-with-input-request
+
+<procedure>(authenticated-call-with-input-request service protocol-parameters token-credential uri-or-request writer reader)</procedure>
+
+Similar to {{call-with-input-request}} from {{http-client}} but will sign the
+request using the OAuth arguments supplied.
+
+===== call-with-input-request
+
+<procedure>(call-with-input-request uri-or-request writer reader)</procedure>
+
+Similar to {{call-with-input-request}} from {{http-client}} but will sign the
+request using the OAuth parameters {{oauth-service}}
+{{oauth-protocol-parameters}} and {{oauth-token-credential}}.
+
+You probably don't want to use this procedure directly: use {{with-oauth}} instead.
+
+
+===== acquire-temporary-credential
+
+<procedure>(acquire-temporary-credential service #!optional callback-url)</procedure>
+
+This is the first step in the three step Redirection-Based Authorization
+defined in OAuth.
+
+   1.  The client obtains a set of temporary credentials from the server
+       (in the form of an identifier and shared-secret).  The temporary
+       credentials are used to identify the access request throughout
+       the authorization process.
+         -- RFC 5849, Section 2
+
+If you are speaking OAuth 1.0a or RFC 5849 then you must specify callback-url at
+this stage rather than at the {{authorize-resource-owner}} stage.
+
+
+===== authorize-resource-owner
+
+<procedure>(authorize-resource-owner service temporary-credential #!optional callback-url)</procedure>
+
+This is the second step in the three step Redirection-Based Authorization
+defined in OAuth.
+
+   2.  The resource owner authorizes the server to grant the client's
+       access request (identified by the temporary credentials).
+         -- RFC 5849, Section 2
+
+This procedure returns a URI. It is up to you to redirect the user to this URI
+and handle the subsequent redirect back to a URI that you control once the user
+has granted the authorization.
+
+If you are speaking OAuth 1.0 then you may supply callback-url at this stage,
+otherwise you must not.
+
+
+===== acquire-token-credential
+
+<procedure>(acquire-token-credential service temporary-credential #!optional verifier)</procedure>
+
+This is the third step in the three step Redirection-Based Authorization
+defined in OAuth.
+
+   3.  The client uses the temporary credentials to request a set of
+       token credentials from the server, which will enable it to access
+       the resource owner's protected resources.
+         -- RFC 5849, Section 2
+
+When the user returns from the authorization step ({{authorize-resource-owner}})
+you must exchange their temporary credential for a token credential using this
+procedure.
+
+This procedure will return a token credential that you can save, and reuse along
+with your oauth-service ({{make-oauth-service}}), in order to make signed API
+calls on behalf of the authorized user.
+
+Once you have obtained the token-credential returned by this procedure you can
+use {{with-oauth}} to make API calls to arbitrary HTTP endpoints.
+
+
+=== Examples
+
+==== OAuth 1.0 Flow (no verifier)
+
+You will need a some Dropbox App Credentials to follow this example
+https://www.dropbox.com/developers/apps
+
+	(define dropbox (make-oauth-service-provider
+			 protocol-version: 1.0
+			 credential-request-url: "https://api.dropbox.com/1/oauth/request_token"
+			 owner-auth-url: "https://www.dropbox.com/1/oauth/authorize"
+			 token-request-url: "https://api.dropbox.com/1/oauth/access_token"
+			 signature-method: 'plaintext))
+
+	(define dropbox-app
+	  (make-oauth-service
+	    service: dropbox
+	    client-credential: (make-oauth-credential "<token>" "<secret>")))
+
+	(define x (acquire-temporary-credential dropbox-app))
+
+	(use uri-common)
+	(uri->string (authorize-resource-owner dropbox-app x "http://wiki.call-cc.org/eggref/4/oauth"))
+
+	(define save-me (acquire-token-credential dropbox-app x))
+	(with-oauth mydropbox save-me
+	 (lambda ()
+	  (call-with-input-request "https://api.dropbox.com/1/account/info" #f (cut read-string #f <>))))
+
+
+=== License
+
+  Copyright (C) 2012, Andy Bennett
+  All rights reserved.
+  
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the following conditions are met:
+  
+  Redistributions of source code must retain the above copyright notice, this
+  list of conditions and the following disclaimer.
+  Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the documentation
+  and/or other materials provided with the distribution.
+  Neither the name of the author nor the names of its contributors may be
+  used to endorse or promote products derived from this software without
+  specific prior written permission.
+  
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDERS OR CONTRIBUTORS BE
+  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+  POSSIBILITY OF SUCH DAMAGE.
+
+=== Version History
+* 0.1, (2012/10/30) : Initial OAuth 1.0, 1.0a RFC 5849 client
+

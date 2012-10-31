@@ -1,0 +1,22 @@
+(
+ ; Your egg's license:
+ (license "BSD")
+
+ ; Pick one from the list of categories (see below) for your egg and enter it
+ ; here.
+ (category web)
+
+ ; A list of eggs oauth depends on.  If none, you can omit this declaration
+ ; altogether. `depends' is an alias to `needs'.
+ ; Notice that you should NOT put Chicken units (e.g., srfi-1, srfi-13
+ ; and many others) in `needs' or in `depends'.
+ (needs uri-common intarweb http-client)
+
+ ; A list of eggs required for TESTING ONLY.  See the `Tests' section.
+ ; Just like `needs' and `depends', `test-depends' should NOT contain
+ ; Chicken units.
+ (test-depends test)
+
+ (author "Andy Bennett <andyjpb@knodium.com>")
+ (synopsis "OAuth 1.0, 1.0a, RFC 5849"))
+
