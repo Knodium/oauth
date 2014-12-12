@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; OAuth 1.0, 1.0a & RFC 5849
 ;;;
-;;;  Copyright (C) 2012, Andy Bennett
+;;;  Copyright (C) 2012 -> 2014, Andy Bennett
 ;;;  All rights reserved.
 ;;;
 ;;;  Redistribution and use in source and binary forms, with or without
