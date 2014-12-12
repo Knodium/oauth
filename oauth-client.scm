@@ -359,8 +359,11 @@
   uri)) ; return a uri object that the user can be redirected to.
 
 (define (acquire-token-credential service temporary-credential #!optional verifier)
-  (let* ((_ (if (alist-ref 'sends-oauth-verifier service) (abort "oauth_verifier MUST be supplied!")))
-	 (resp (nth-value 0 (authenticated-call-with-input-request
+  (if (and
+	(alist-ref 'sends-oauth-verifier service)
+	(not verifier))
+    (abort "oauth_verifier MUST be supplied for this service!"))
+  (let* ((resp (nth-value 0 (authenticated-call-with-input-request
 			      service
 			      (if verifier `((oauth_verifier . ,verifier)) '())
 			      temporary-credential
