@@ -56,13 +56,13 @@
 (use data-structures extras srfi-1 srfi-13)
 
 ; Eggs - http://wiki.call-cc.org/chicken-projects/egg-index-4.html
-(use uri-common intarweb)
+(use uri-common intarweb hmac sha1 base64)
 (require-library http-client)
 (import (rename http-client (call-with-input-request orig:call-with-input-request)))
 
 
 
-(define supported-signatures   '(plaintext)) ; '(plaintext hmac-sha1 rsa-sha1)
+(define supported-signatures   '(plaintext hmac-sha1)) ; '(plaintext hmac-sha1 rsa-sha1)
 (define supported-methods      '(POST)) ; '(POST GET)
 (define supported-transmission '(authorization-header)) ; '(authorization-header request-entity-body query-string)
 
@@ -91,6 +91,60 @@
 (define (read-reply port)
  (string-chomp (read-string #f port) "\r"))
 
+(define (signature-base-string request protocol-parameters body)
+  (let* ((uri   (request-uri request))
+	 (port  (uri-port uri))
+	 (query (uri-query uri))
+	 (path  (uri-path uri))
+	 (base-string-uri
+	   (conc
+	     (uri->string
+	       (update-uri uri ; Apply RFC5849: Section 3.4.1.2 Constraints
+			   host: (string-downcase (uri-host uri))
+			   port: (case (uri-scheme uri)
+				   ((http)  (if (or (equal? port 80)  (not port)) #f port))
+				   ((https) (if (or (equal? port 443) (not port)) #f port)))
+			   query: #f
+			   fragment: #f))
+	     (if (null? path) "/" "")))
+	 (normalised-request-parameters ; Request Parameters as per RFC5849: Section 3.4.1.3
+	   (string-intersperse
+	     (map
+	       (lambda (param)
+		 (conc (car param) "=" (cdr param)))
+	       (sort
+		 (fold ; Encoding for Parameter Normalisation as per RFC5849: Section 3.4.1.3.2
+		   (lambda (param seed) ; %encode's (uri-encode-string) default char-set matches RFC5849: Section 3.6
+		     (if (cdr param) ; Omit keys with #f values as per uri-common's form-urlencode.
+		       (cons
+			 (cons
+			   (%encode (->string (car param)))
+			   (if (eqv? #t (cdr param)) ; Handle keys with #t value as per uri-common's form-urlencode.
+			     ""
+			     (%encode (->string (cdr param)))))
+			 seed)
+		       seed))
+		   '()
+		   (alist-delete
+		     'oauth-signature
+		     (append
+		       query
+		       (alist-delete 'realm protocol-parameters) ; Future contents of the "Authorization" header
+		       (if (list? body) ; HTTP request entity-body if relevant
+			 body
+			 '()))))
+		 (lambda (a b)
+		   (if (string=? (car a) (car b))
+		     (string<? (cdr a) (cdr b))
+		     (string<? (car a) (car b))))))
+	     "&")))
+    (conc
+      (%encode (string-upcase (symbol->string (request-method request))))
+      "&"
+      (%encode base-string-uri)
+      "&"
+      (%encode normalised-request-parameters))))
+
 (define (sign-request request protocol-parameters body service token-credential)
   ; For hmac-sha1 and rsa-sha1 we must assert the http request entity-body conditions of RFC5849: Section 3.4.1.3.1
   (let ((signature-method (alist-ref 'signature-method service)))
@@ -99,6 +153,11 @@
        ;(assert (eqv? 'https (uri-scheme (request-uri request))))
        (let ((client-credential (alist-ref 'client-credential service)))
 	 (conc (%encode (secret client-credential)) "&" (%encode (secret token-credential)))))
+      ((hmac-sha1)
+       (let* ((signature-base-string (signature-base-string request protocol-parameters body))
+	      (client-credential     (alist-ref 'client-credential service))
+	      (key                   (conc (%encode (secret client-credential)) "&" (%encode (secret token-credential)))))
+	 (base64-encode ((hmac key (sha1-primitive)) signature-base-string))))
       (else (abort (conc signature-method " signature method not implemented!"))))))
 
 
