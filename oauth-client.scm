@@ -78,7 +78,10 @@
 ;     + nonce and timestamp parameters OPTIONAL when using PLAINTEXT
 ;     + permitted omitting empty oauth_token
 ;     + various other things only relevant for non PLAINTEXT signatures
-(define supported-versions     '(1.0 1.0a rfc5849))
+(define supported-versions ; List of (version oauth_version-string)
+  '((1.0     . "1.0")
+    (1.0a    . "1.0a")
+    (rfc5849 . "rfc5849")))
 
 
 (define (memv? obj lst) (and (memv obj lst) #t))
@@ -167,7 +170,7 @@
 				     credential-request-url (credential-request-method 'POST)
 				     token-request-url (token-request-method 'POST)
 				     (transmission-method 'authorization-header))
-  (assert (memv protocol-version supported-versions))
+  (assert (memv protocol-version (map car supported-versions)))
   (assert (string? credential-request-url))
   (assert (string? owner-auth-url))
   (assert (string? token-request-url))
@@ -233,7 +236,7 @@
 		   `((oauth_consumer_key     . ,(token (alist-ref 'client-credential service)))
 		     (oauth_token            . ,(token token-credential))
 		     (oauth_signature_method . ,(string-upcase (symbol->string signature-method)))
-		     (oauth_version          . ,(exact->inexact (alist-ref 'protocol-version service)))
+		     (oauth_version          . ,(alist-ref (alist-ref 'protocol-version service) supported-versions equal?))
 		     ,@(if (not (eqv? 'plaintext signature-method))
 			 `((oauth_timestamp . "bar")
 			   (oauth_nonce . "bar"))
