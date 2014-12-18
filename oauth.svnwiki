@@ -22,7 +22,7 @@ OAuth 1.0, 1.0a & RFC 5849
 
 === Requirements
 
-* [[uri-common]] [[intarweb]] [[http-client]]
+* [[uri-common]] [[intarweb]] [[http-client]] [[hmac]] [[sha1]] [[base64]]
 
 === API
 
@@ -261,4 +261,5 @@ https://www.dropbox.com/developers/apps
 
 === Version History
 * 0.1, (2012/10/30) : Initial OAuth 1.0, 1.0a RFC 5849 client
+* 0.2, (2014/12/18) : HMAC-SHA1 signature algorithm. Bug fixes for 1.0a and RFC 5849 serialisation and verifiers.
 

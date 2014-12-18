@@ -9,6 +9,6 @@
   ; Files to install for your extension:
   '("oauth-client.o" "oauth-client.so" "oauth-client.import.so")
   ; Assoc list with properties for your extension:
-  '((version "0.1") ;; version number should be a string
+  '((version "0.2") ;; version number should be a string
     (static "oauth-client.o"))) ;; for static linking
 
