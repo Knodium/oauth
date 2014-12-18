@@ -16,9 +16,12 @@ OAuth 1.0, 1.0a & RFC 5849
 
 [[/users/andyjpb|Andy Bennett]]
 
+=== Repository
+
+[[https://bitbucket.org/knodium/oauth|https://bitbucket.org/knodium/oauth]]
+
 === Requirements
 
-* [[data-structures]] [[extras]] [[srfi-1]] [[srfi-13]]
 * [[uri-common]] [[intarweb]] [[http-client]]
 
 === API
@@ -222,7 +225,7 @@ https://www.dropbox.com/developers/apps
 	(uri->string (authorize-resource-owner dropbox-app x "http://wiki.call-cc.org/eggref/4/oauth"))
 
 	(define save-me (acquire-token-credential dropbox-app x))
-	(with-oauth mydropbox save-me
+	(with-oauth dropbox-app save-me
 	 (lambda ()
 	  (call-with-input-request "https://api.dropbox.com/1/account/info" #f (cut read-string #f <>))))
 
