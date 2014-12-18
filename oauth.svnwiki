@@ -204,7 +204,7 @@ use {{with-oauth}} to make API calls to arbitrary HTTP endpoints.
 
 ==== OAuth 1.0 Flow (no verifier)
 
-You will need a some Dropbox App Credentials to follow this example
+You will need some Dropbox App Credentials to follow this example
 https://www.dropbox.com/developers/apps
 
 	(define dropbox (make-oauth-service-provider
@@ -228,6 +228,56 @@ https://www.dropbox.com/developers/apps
 	(with-oauth dropbox-app save-me
 	 (lambda ()
 	  (call-with-input-request "https://api.dropbox.com/1/account/info" #f (cut read-string #f <>))))
+
+==== OAuth 1.0a Flow (with verifier)
+
+You will need some Twitter App Credentials to follow this example
+https://apps.twitter.com/
+
+	;;;;;
+	; Bare minimum twitter binding
+	(use oauth-client uri-common rest-bind medea)
+
+	(define twitter (make-oauth-service-provider
+			  protocol-version: '1.0a
+			  credential-request-url: "https://api.twitter.com/oauth/request_token"
+			  owner-auth-url: "https://api.twitter.com/oauth/authorize"
+			  token-request-url: "https://api.twitter.com/oauth/access_token"
+			  signature-method: 'hmac-sha1))
+
+	(define twitter-app
+	  (make-oauth-service
+	    service: twitter
+	    client-credential: (make-oauth-credential
+				 "<token>"
+				 "<secret>")))
+
+	; Lots of web services, including Twitter, don't accept ';' separated query strings so
+	; use '&' for encoding by default but support both '&' and ';' for decoding.
+	(form-urlencoded-separator "&;")
+
+	; https://dev.twitter.com/rest/reference/get/account/verify_credentials
+	(define-method (verify-credentials #!key include_entities skip_status)
+	  "https://api.twitter.com/1.1/account/verify_credentials.json"
+	  #f read-json #f)
+	;;;;;
+
+
+	;;;;;
+	; Acquire some credentials
+	(define x (acquire-temporary-credential twitter-app))
+	(uri->string (authorize-resource-owner twitter-app x))
+
+	; Visit the supplied URL in browser, allow app and retrieve verifier
+	(define me (acquire-token-credential twitter-app x <VERIFIER>))
+
+	; Example usage of binding
+	; include_entities: false still seems to include the entities node??
+	(pp
+	  (with-oauth twitter-app me
+		      (lambda ()
+			(verify-credentials skip_status: "true" include_entities: "false"))))
+	;;;;;
 
 
 === License
