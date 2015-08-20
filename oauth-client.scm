@@ -297,7 +297,7 @@
 		     (oauth_signature_method . ,(string-upcase (symbol->string signature-method)))
 		     (oauth_version          . ,(alist-ref (alist-ref 'protocol-version service) supported-versions equal?))
 		     ,@(if (not (eqv? 'plaintext signature-method))
-			 `((oauth_timestamp . ,(current-seconds))
+			 `((oauth_timestamp . ,(inexact->exact (current-seconds)))
 			   (oauth_nonce . 1))
 			 '()))))
 	 (signature (sign-request req protocol-parameters body service token-credential))
