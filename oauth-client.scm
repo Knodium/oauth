@@ -49,16 +49,27 @@
 	  authorize-resource-owner
 	  acquire-token-credential)
 
-(import chicken scheme)
+(import scheme)
 
 
-; Units - http://api.call-cc.org/doc/chicken/language
-(use data-structures extras srfi-1 srfi-13)
+(cond-expand
 
-; Eggs - http://wiki.call-cc.org/chicken-projects/egg-index-4.html
-(use uri-common intarweb hmac sha1 base64)
-(require-library http-client)
-(import (rename http-client (call-with-input-request orig:call-with-input-request)))
+  (chicken-4
+    ; Units - http://api.call-cc.org/doc/chicken/language
+    (use data-structures extras srfi-1 srfi-13)
+
+    ; Eggs - http://wiki.call-cc.org/chicken-projects/egg-index-4.html
+    (use uri-common intarweb hmac sha1 base64)
+    (require-library http-client)
+    (import (rename http-client (call-with-input-request orig:call-with-input-request))))
+
+  (chicken-5
+    ; Units
+    (import (chicken base) (chicken time) (chicken format) (chicken string) (chicken sort) (chicken io) (chicken condition))
+
+    ; Eggs - http://wiki.call-cc.org/chicken-projects/egg-index-5.html
+    (import srfi-1 srfi-13 uri-common intarweb hmac sha1 base64)
+    (import (rename http-client (call-with-input-request orig:call-with-input-request)))))
 
 
 
@@ -89,7 +100,9 @@
 
 ; Some OAuth servers return form-urlencoded responses with trailing \r.
 (define (read-reply port)
- (string-chomp (read-string #f port) "\r"))
+  (let* ((s (read-string #f port))
+	 (s (if (eqv? #!eof s) "" s)))
+    (string-chomp s "\r")))
 
 (define (signature-base-string request protocol-parameters body)
   (let* ((uri   (request-uri request))

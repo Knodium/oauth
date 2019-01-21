@@ -1,0 +1,8 @@
+((license "BSD")
+ (category web)
+ (dependencies srfi-1 srfi-13 uri-common intarweb http-client hmac sha1 base64)
+ (test-dependencies test)
+ (author "Andy Bennett <andyjpb@knodium.com>")
+ (synopsis "OAuth 1.0, 1.0a, RFC 5849")
+ (components (extension oauth-client)))
+

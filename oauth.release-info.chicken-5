@@ -1,7 +1,5 @@
 (repo git "https://bitbucket.org/knodium/{egg-name}.git")
 
 (uri tarbz2 "https://bitbucket.org/knodium/{egg-name}/get/{egg-release}.tar.bz2")
-(release "0.1")
-(release "0.2")
 (release "0.3")
 
